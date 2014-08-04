@@ -1,21 +1,21 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class TreantNavPathCalculator : MonoBehaviour
 {
 	private const string BUILDING_TAG = "Building";
-	private const string WALL_TAG = "Wall";
 
 	[SerializeField]
 	private NavMeshAgent navMeshAgent;
 
-	private List<NavMeshPath> paths = new List<NavMeshPath> ();
 	public List<NavMeshPath> Paths
 	{
-		get { return paths; }
+		get;
+		private set;
 	}
-
-	public Vector3 Target
+	
+	public GameObject Target
 	{
 		get;
 		private set;
@@ -25,52 +25,31 @@ public class TreantNavPathCalculator : MonoBehaviour
 	{
 		CalculateTarget ();
 	}
-
+	
 	private void CalculateTarget ()
 	{
-		Target = Vector3.zero;
-		CalculatePathsToAllBuildings ();
-		Target = GetNearestPathWithAnOffMeshLink ();
+		Target = GetNearestWallInPathOfBuildings (navMeshAgent, GetAllBuildings());
 	}
 
-	private void CalculatePathsToAllBuildings ()
+	public GameObject GetNearestWallInPathOfBuildings (NavMeshAgent navMeshAgent, List<GameObject> buildings)
 	{
-		paths.Clear ();
-		foreach (GameObject building in GetAllBuildings ())
+		this.navMeshAgent = navMeshAgent;
+		List<NavMeshPath> paths = CalculatePathsToBuildings (buildings);
+		this.Paths = paths;
+		OffMeshLink target = FindNearestPathWithAnOffMeshLink (paths);
+		return GetAttackableElement (target);
+	}
+	
+	private List<NavMeshPath> CalculatePathsToBuildings (List<GameObject> buildings)
+	{
+		List<NavMeshPath> paths = new List<NavMeshPath> ();
+
+		foreach (GameObject building in buildings)
 		{
-			Vector3 targetPosition = building.transform.position;
-			NavMeshPath path = CalculatePathToBuilding (targetPosition);
+			NavMeshPath path = CalculatePathToBuilding (building.transform.position);
 			paths.Add (path);
 		}
-	}
-
-	private Vector3 GetNearestPathWithAnOffMeshLink ()
-	{
-		float minDistanceToOffMeshLink = float.MaxValue;
-		Vector3 targetPosition = Vector3.zero;
-
-		foreach (NavMeshPath path in paths)
-		{
-			Vector3 position = GetNextOffMeshLinkPositionInPath (path);
-			if (position != Vector3.zero)
-			{
-				float distance = GetDistanceBetweenPoints (path.corners);
-				if (distance < minDistanceToOffMeshLink)
-				{
-					minDistanceToOffMeshLink = distance;
-					targetPosition = position;
-				}
-			}
-		}
-		return targetPosition;
-	}
-
-	private Vector3 GetNextOffMeshLinkPositionInPath (NavMeshPath navPath)
-	{
-		navMeshAgent.SetPath (navPath);
-		Vector3 nextOffMeshLinkPosition = navMeshAgent.nextOffMeshLinkData.startPos;
-		navMeshAgent.ResetPath ();
-		return nextOffMeshLinkPosition;
+		return paths;
 	}
 
 	private NavMeshPath CalculatePathToBuilding (Vector3 targetPosition)
@@ -79,7 +58,46 @@ public class TreantNavPathCalculator : MonoBehaviour
 		navMeshAgent.CalculatePath (targetPosition, navPath);
 		return navPath;
 	}
+	
+	private OffMeshLink FindNearestPathWithAnOffMeshLink (List<NavMeshPath> paths)
+	{
+		OffMeshLink target = null;
+		float minDistanceToOffMeshLink = float.PositiveInfinity;
 
+		foreach (NavMeshPath path in paths)
+			CheckIfIsTheNearestTarget (path, ref minDistanceToOffMeshLink, ref target);
+
+		return target;
+	}
+
+	private void CheckIfIsTheNearestTarget (NavMeshPath path, ref float minDistanceToOffMeshLink, ref OffMeshLink target)
+	{
+		OffMeshLink offMeshLink = GetFirstOffMeshLink (path);
+		float distance = GetPathDistance (path, offMeshLink);
+
+		if (distance < minDistanceToOffMeshLink)
+		{
+			minDistanceToOffMeshLink = distance;
+			target = offMeshLink;
+		}
+	}
+	
+	private float GetPathDistance (NavMeshPath path, OffMeshLink offMeshLink)
+	{
+		if (offMeshLink == null)
+			return float.PositiveInfinity;
+		else
+			return GetDistanceBetweenPoints (path.corners);
+	}
+
+	private OffMeshLink GetFirstOffMeshLink (NavMeshPath path)
+	{
+		navMeshAgent.SetPath (path);
+		OffMeshLink offMeshLink = navMeshAgent.nextOffMeshLinkData.offMeshLink;
+		navMeshAgent.ResetPath ();
+		return offMeshLink;
+	}
+	
 	private float GetDistanceBetweenPoints (Vector3[] corners)
 	{
 		float distance = 0;
@@ -92,9 +110,15 @@ public class TreantNavPathCalculator : MonoBehaviour
 		return distance;
 	}
 
-	private GameObject[] GetAllBuildings ()
+	private GameObject GetAttackableElement (OffMeshLink offMeshLink)
 	{
-		return GameObject.FindGameObjectsWithTag (BUILDING_TAG);
+		return offMeshLink.gameObject;
+	}
+
+	private List<GameObject> GetAllBuildings ()
+	{
+		GameObject[] buildings = GameObject.FindGameObjectsWithTag (BUILDING_TAG);
+		return new List<GameObject> (buildings);
 	}
 
 	private void OnGUI ()

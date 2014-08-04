@@ -18,7 +18,7 @@ public class NavPathDrawer : MonoBehaviour
 
 	private void OnDrawGizmos ()
 	{
-		if (navPathCalculator != null && navPathCalculator.Target != Vector3.zero)
+		if (navPathCalculator != null && navPathCalculator.Target != null)
 			DrawTarget (navPathCalculator.Target);
 	}
 	
@@ -32,8 +32,8 @@ public class NavPathDrawer : MonoBehaviour
 		}
 	}
 
-	private void DrawTarget (Vector3 target)
+	private void DrawTarget (GameObject target)
 	{
-		Gizmos.DrawWireSphere (target, 0.4f);
+		Gizmos.DrawWireSphere (target.transform.position, 0.4f);
 	}
 }
