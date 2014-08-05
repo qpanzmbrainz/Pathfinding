@@ -34,6 +34,8 @@ public class NavPathDrawer : MonoBehaviour
 
 	private void DrawTarget (GameObject target)
 	{
-		Gizmos.DrawWireSphere (target.transform.position, 0.4f);
+		Vector3 spherePosition = target.transform.position;
+		spherePosition.y = 1f;
+		Gizmos.DrawWireSphere (spherePosition, 0.4f);
 	}
 }

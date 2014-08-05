@@ -46,10 +46,27 @@ public class TreantNavPathCalculator : MonoBehaviour
 
 		foreach (GameObject building in buildings)
 		{
-			NavMeshPath path = CalculatePathToBuilding (building.transform.position);
+			Transform targetPoint = GetBuildingNearestTargetPoint (building);;
+			NavMeshPath path = CalculatePathToBuilding (targetPoint.position);
 			paths.Add (path);
 		}
 		return paths;
+	}
+
+	private Transform GetBuildingNearestTargetPoint (GameObject building)
+	{
+		float minDistance = float.PositiveInfinity;
+		Transform targetPoint = null;
+		foreach (Transform tryTargetPoint in building.transform)
+		{
+			float distanceToPoint = Vector3.Distance (tryTargetPoint.position, navMeshAgent.transform.position);
+			if (distanceToPoint < minDistance)
+			{
+				minDistance = distanceToPoint;
+				targetPoint = tryTargetPoint;
+			}
+		}
+		return targetPoint;
 	}
 
 	private NavMeshPath CalculatePathToBuilding (Vector3 targetPosition)
@@ -112,6 +129,9 @@ public class TreantNavPathCalculator : MonoBehaviour
 
 	private GameObject GetAttackableElement (OffMeshLink offMeshLink)
 	{
+		if (offMeshLink == null)
+			return null;
+
 		return offMeshLink.gameObject;
 	}
 
